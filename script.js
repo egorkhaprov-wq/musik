@@ -673,6 +673,7 @@ async function shootLasers(duration=1500){
 }
 async function runFightScene(){
   fightActive = true;
+  fightScene.classList.add('active');
   fightScene.style.pointerEvents = 'none';
   const vw = window.innerWidth;
   const fw = fighterH.offsetWidth || 140;
@@ -750,10 +751,12 @@ async function runFightScene(){
   await fightSleep(1000);
   fighterH.classList.remove('visible','walking');
   fighterB.classList.remove('visible','walking');
+  fightScene.classList.remove('active');
   fightActive = false;
 }
 function stopFight(){
   fightActive = false;
+  fightScene.classList.remove('active');
   fighterH.classList.remove('visible','walking','punch','hit','shake');
   fighterB.classList.remove('visible','walking','punch','hit','shake');
   laserEyes.classList.remove('active');
