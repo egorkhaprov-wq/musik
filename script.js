@@ -103,6 +103,64 @@ document.querySelectorAll('.app-card').forEach(card => {
 const musicToggle = document.getElementById('musicToggle');
 const audio = document.getElementById('phonkAudio');
 const fallingBlocks = document.getElementById('fallingBlocks');
+const miniPlayer = document.getElementById('miniPlayer');
+const mpTracks = document.getElementById('mpTracks');
+const mpPause = document.getElementById('mpPause');
+const TRACKS = [
+  {
+    name: 'Yara Yara Ya Phonk',
+    artist: 'MC WM, MC LAN',
+    url: 'https://raw.githubusercontent.com/egorkhaprov-wq/musik/main/MC_WM_MC_LAN_-_Yara_Yara_Ya_Phonk_-_Sua_Amiga_Eu_Vou_Pegar_%28SkySound.cc%29.mp3'
+  },
+  {
+    name: 'Body',
+    artist: 'Don Toliver',
+    url: 'https://raw.githubusercontent.com/egorkhaprov-wq/musik/main/Don%20Toliver%20-%20Body.mp3'
+  },
+  {
+    name: 'EVA LONELY (Hardstyle)',
+    artist: 'azrxel',
+    url: 'https://raw.githubusercontent.com/egorkhaprov-wq/musik/main/azrxel_-_EVA_LONELY_LONELY_HARDSTYLE_%28SkySound.cc%29.mp3'
+  }
+];
+let currentTrackIndex = 0;
+function renderTracks() {
+  mpTracks.innerHTML = '';
+  TRACKS.forEach((track, i) => {
+    const trackEl = document.createElement('button');
+    trackEl.className = 'mp-track' + (i === currentTrackIndex && isPlaying ? ' active' : '');
+    trackEl.innerHTML = `
+      <div class="mp-track-icon">
+        ${i === currentTrackIndex && isPlaying ?
+          '<div class="mp-bars"><span></span><span></span><span></span></div>' :
+          '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>'
+        }
+      </div>
+      <div class="mp-track-info">
+        <div class="mp-track-name">${track.name}</div>
+        <div class="mp-track-artist">${track.artist}</div>
+      </div>
+    `;
+    trackEl.addEventListener('click', (e) => {
+      e.stopPropagation();
+      selectTrack(i);
+    });
+    mpTracks.appendChild(trackEl);
+  });
+}
+function selectTrack(index) {
+  currentTrackIndex = index;
+  audio.src = TRACKS[index].url;
+  audio.load();
+  playMusic();
+}
+function openMiniPlayer() {
+  miniPlayer.classList.add('open');
+  renderTracks();
+}
+function closeMiniPlayer() {
+  miniPlayer.classList.remove('open');
+}
 let isPlaying = false;
 let audioCtx = null;
 let analyser = null;
@@ -112,10 +170,11 @@ let fallbackTimer = null;
 let lastBeatTime = 0;
 let beatsDetected = 0;
 let startTime = 0;
+let vampireTimer = null;
 const energyHistory = [];
-const HISTORY_SIZE = 25; // короче история = быстрее реакция
-const BEAT_THRESHOLD = 1.05; // совсем низкий порог - ловит почти всё
-const MIN_BEAT_GAP_MS = 150; // чаще биты разрешены
+const HISTORY_SIZE = 20; // быстрее адаптация
+const BEAT_THRESHOLD = 1.02; // ОЧЕНЬ низкий порог - ловит практически каждый удар
+const MIN_BEAT_GAP_MS = 120; // ещё чаще биты разрешены
 const FALLBACK_BPM = 140;
 const cracksContainer = document.getElementById('cracksContainer');
 const contentWrapper = document.getElementById('contentWrapper');
@@ -390,10 +449,10 @@ function detectBeat() {
   }
   analyser.getByteFrequencyData(dataArray);
   let energy = 0;
-  for (let i = 0; i < 8; i++) {
+  for (let i = 0; i < 12; i++) {
     energy += dataArray[i];
   }
-  energy /= 8;
+  energy /= 12;
   energyHistory.push(energy);
   if (energyHistory.length > HISTORY_SIZE) energyHistory.shift();
   const avg = energyHistory.reduce((a, b) => a + b, 0) / energyHistory.length;
@@ -405,12 +464,12 @@ function detectBeat() {
   }
   if (
     energy > avg * BEAT_THRESHOLD &&
-    energy > 8 &&
+    energy > 5 &&
     now - lastBeatTime > MIN_BEAT_GAP_MS
   ) {
     lastBeatTime = now;
     beatsDetected++;
-    const intensity = Math.min((energy - avg) / 30 + 0.5, 1);
+    const intensity = Math.min((energy - avg) / 25 + 0.5, 1);
     triggerBeat(intensity);
   }
   beatCheckRAF = requestAnimationFrame(detectBeat);
@@ -465,13 +524,18 @@ function playMusic() {
   beatsDetected = 0;
   startTime = performance.now();
   lastBeatTime = 0;
+  if (!audio.src || audio.src === window.location.href) {
+    audio.src = TRACKS[currentTrackIndex].url;
+  }
   audio.play().then(() => {
     isPlaying = true;
     musicToggle.classList.remove('paused');
     musicToggle.classList.add('playing');
-    musicToggle.setAttribute('title', 'Выключить музыку');
-    musicToggle.setAttribute('aria-label', 'Выключить музыку');
+    musicToggle.setAttribute('title', 'Музыка играет');
+    musicToggle.setAttribute('aria-label', 'Музыка играет');
     detectBeat();
+    renderTracks(); // обновить активный трек в плеере
+    if (vampireTimer) clearTimeout(vampireTimer);
     vampireTimer = setTimeout(() => {
       if (isPlaying) startVampire();
     }, 15000);
@@ -484,24 +548,48 @@ function pauseMusic() {
   isPlaying = false;
   musicToggle.classList.add('paused');
   musicToggle.classList.remove('playing');
-  musicToggle.setAttribute('title', 'Phonk Music');
-  musicToggle.setAttribute('aria-label', 'Включить музыку');
+  musicToggle.setAttribute('title', 'Музыка');
+  musicToggle.setAttribute('aria-label', 'Музыка');
   if (beatCheckRAF) cancelAnimationFrame(beatCheckRAF);
   stopFallbackTimer();
   stopVampire();
   contentWrapper.classList.remove('beat-active');
   document.body.classList.remove('beat-pulse');
+  closeMiniPlayer(); // закрываем плеер при паузе
   setTimeout(() => {
     while (fallingBlocks.firstChild) fallingBlocks.removeChild(fallingBlocks.firstChild);
     while (cracksContainer.firstChild) cracksContainer.removeChild(cracksContainer.firstChild);
   }, 1500);
 }
-musicToggle.addEventListener('click', () => {
-  if (isPlaying) pauseMusic();
-  else playMusic();
+musicToggle.addEventListener('click', (e) => {
+  e.stopPropagation();
+  if (miniPlayer.classList.contains('open')) {
+    closeMiniPlayer();
+  } else {
+    openMiniPlayer();
+  }
 });
+mpPause.addEventListener('click', (e) => {
+  e.stopPropagation();
+  pauseMusic();
+});
+document.addEventListener('click', (e) => {
+  if (
+    miniPlayer.classList.contains('open') &&
+    !miniPlayer.contains(e.target) &&
+    !musicToggle.contains(e.target)
+  ) {
+    closeMiniPlayer();
+  }
+});
+audio.addEventListener('ended', () => {
+  if (isPlaying) {
+    currentTrackIndex = (currentTrackIndex + 1) % TRACKS.length;
+    selectTrack(currentTrackIndex);
+  }
+});
+renderTracks();
 const vampireEl = document.getElementById('vampire');
-let vampireTimer = null;
 let vampireActive = false;
 let vampireBehaviorRunning = false;
 let currentTarget = null;
