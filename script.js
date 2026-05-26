@@ -674,6 +674,7 @@ async function shootLasers(duration=1500){
 async function runFightScene(){
   fightActive = true;
   fightScene.classList.add('active');
+  await fightSleep(100); // ждём пока DOM отрисует fight-scene
   fightScene.style.pointerEvents = 'none';
   const vw = window.innerWidth;
   const fw = fighterH.offsetWidth || 140;
