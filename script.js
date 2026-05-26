@@ -607,170 +607,173 @@ const laserR = document.getElementById('laserR');
 const fightFx = document.getElementById('fightFx');
 let fightActive = false;
 let fightTimer = null;
-function fightSleep(ms){ return new Promise(r => setTimeout(r, ms)); }
-function getPos(el){ return parseFloat(el.style.left || 0); }
-function spawnHitEffect(x, y, text, color='#FFD700'){
-  const el = document.createElement('div');
-  el.className = 'hit-effect';
-  el.textContent = text;
-  el.style.left = x + 'px';
-  el.style.top = y + 'px';
-  el.style.color = color;
+function fightSleep(ms){ return new Promise(r => setTimeout(r,ms)); }
+function spawnHit(x,y,text,color='#FFD700'){
+  const el=document.createElement('div');
+  el.className='hit-effect';
+  el.textContent=text;
+  el.style.cssText=`left:${x}px;top:${y}px;color:${color}`;
   fightFx.appendChild(el);
-  setTimeout(()=>el.remove(), 700);
+  setTimeout(()=>el.remove(),700);
 }
-function spawnImpact(x, y, color='rgba(255,200,50,.7)', size=80){
-  const el = document.createElement('div');
-  el.className = 'impact-flash';
-  el.style.left = (x - size/2) + 'px';
-  el.style.top = (y - size/2) + 'px';
-  el.style.width = size + 'px';
-  el.style.height = size + 'px';
-  el.style.background = `radial-gradient(circle,${color} 0%,transparent 70%)`;
+function spawnImpact(x,y,color='rgba(255,220,50,.9)',size=80){
+  const el=document.createElement('div');
+  el.className='impact-flash';
+  el.style.cssText=`left:${x-size/2}px;top:${y-size/2}px;width:${size}px;height:${size}px;background:radial-gradient(circle,${color} 0%,transparent 70%)`;
   fightFx.appendChild(el);
-  setTimeout(()=>el.remove(), 500);
+  setTimeout(()=>el.remove(),500);
 }
-function spawnLaserBurn(x1, y1, width, angle){
-  const el = document.createElement('div');
-  el.className = 'laser-burn';
-  el.style.left = x1 + 'px';
-  el.style.top = y1 + 'px';
-  el.style.width = width + 'px';
-  el.style.transform = `rotate(${angle}deg)`;
-  fightFx.appendChild(el);
-  setTimeout(()=>el.remove(), 2000);
+function spawnShockwave(x,y){
+  for(let i=0;i<6;i++){
+    const spark=document.createElement('div');
+    const angle=(i/6)*Math.PI*2;
+    const dist=40+Math.random()*30;
+    spark.style.cssText=`position:absolute;width:4px;height:4px;background:#FFD700;border-radius:50%;left:${x}px;top:${y}px;box-shadow:0 0 6px #FFD700;animation:sparkFly .5s ease-out forwards;--dx:${Math.cos(angle)*dist}px;--dy:${Math.sin(angle)*dist}px`;
+    fightFx.appendChild(spark);
+    setTimeout(()=>spark.remove(),600);
+  }
 }
-function addClass(el, cls){ el.classList.add(cls); }
-function removeClass(el, cls){ el.classList.remove(cls); }
-async function shootLasers(duration=1500){
-  const hRect = fighterH.getBoundingClientRect();
-  const eyeX = hRect.left + hRect.width * 0.5;
-  const eyeY = hRect.top + hRect.height * 0.08;
-  const targetX = window.innerWidth * 0.7;
-  const targetY = window.innerHeight * 0.4;
-  const angle = Math.atan2(targetY - eyeY, targetX - eyeX) * 180 / Math.PI;
-  const dist = Math.hypot(targetX - eyeX, targetY - eyeY);
-  laserL.style.width = dist + 'px';
-  laserL.style.transform = `rotate(${angle + 2}deg)`;
-  laserR.style.width = dist + 'px';
-  laserR.style.transform = `rotate(${angle - 2}deg)`;
+function getFighterMidY(el){
+  const r=el.getBoundingClientRect();
+  return r.top + r.height*0.45;
+}
+function setPos(el,prop,val,dur=0.5){
+  el.style.transition=`${prop} ${dur}s cubic-bezier(.25,.46,.45,.94)`;
+  el.style[prop]=val+'px';
+}
+async function hAttack(vw){
+  fighterH.classList.remove('fighting');
+  fighterH.classList.add('punch');
+  setPos(fighterH,'left',vw*0.35,0.25);
+  await fightSleep(220);
+  const hRect=fighterH.getBoundingClientRect();
+  const ix=hRect.right+10, iy=getFighterMidY(fighterH);
+  const words=['POW!','SMASH!','BOOM!','WHAM!'];
+  spawnHit(ix-60, iy-80, words[Math.floor(Math.random()*words.length)], '#FFD700');
+  spawnImpact(ix,iy,'rgba(255,220,50,.9)',90+Math.random()*40);
+  spawnShockwave(ix,iy);
+  fighterB.classList.remove('fighting');
+  fighterB.classList.add('hit');
+  const curR=parseInt(fighterB.style.right)||Math.round(vw*0.12);
+  setPos(fighterB,'right',curR-80,0.2);
+  await fightSleep(250);
+  setPos(fighterB,'right',curR,0.4);
+  await fightSleep(500);
+  fighterH.classList.remove('punch');
+  fighterH.classList.add('fighting');
+  await fightSleep(200);
+  setPos(fighterH,'left',vw*0.12,0.4);
+  await fightSleep(400);
+  fighterB.classList.remove('hit');
+  fighterB.classList.add('fighting');
+}
+async function bAttack(vw){
+  fighterB.classList.remove('fighting');
+  fighterB.classList.add('punch');
+  setPos(fighterB,'right',vw*0.35,0.25);
+  await fightSleep(220);
+  const bRect=fighterB.getBoundingClientRect();
+  const ix=bRect.left-10, iy=getFighterMidY(fighterB);
+  const words=['CRACK!','CRUNCH!','BASH!','THUD!'];
+  spawnHit(ix-80, iy-80, words[Math.floor(Math.random()*words.length)], '#88ccff');
+  spawnImpact(ix,iy,'rgba(100,200,255,.9)',90+Math.random()*40);
+  spawnShockwave(ix,iy);
+  fighterH.classList.remove('fighting');
+  fighterH.classList.add('hit');
+  const curL=parseInt(fighterH.style.left)||Math.round(vw*0.12);
+  setPos(fighterH,'left',curL-80,0.2);
+  await fightSleep(250);
+  setPos(fighterH,'left',curL,0.4);
+  await fightSleep(500);
+  fighterB.classList.remove('punch');
+  fighterB.classList.add('fighting');
+  await fightSleep(200);
+  setPos(fighterB,'right',vw*0.12,0.4);
+  await fightSleep(400);
+  fighterH.classList.remove('hit');
+  fighterH.classList.add('fighting');
+}
+async function laserAttack(vw){
+  fighterH.classList.remove('fighting');
+  spawnHit(vw*0.4, window.innerHeight*0.35, '👁️ LASER!', '#ff4400');
+  await fightSleep(300);
+  const hRect=fighterH.getBoundingClientRect();
+  const bRect=fighterB.getBoundingClientRect();
+  const eyeX=hRect.left+hRect.width*0.55;
+  const eyeY=hRect.top+hRect.height*0.08;
+  const tX=bRect.left+bRect.width*0.4;
+  const tY=bRect.top+bRect.height*0.35;
+  const angle=Math.atan2(tY-eyeY, tX-eyeX)*180/Math.PI;
+  const dist=Math.hypot(tX-eyeX, tY-eyeY);
+  laserL.style.cssText=`width:${dist}px;transform:rotate(${angle+2}deg);top:2px;left:28%`;
+  laserR.style.cssText=`width:${dist}px;transform:rotate(${angle-2}deg);top:2px;left:52%`;
   laserEyes.classList.add('active');
   laserL.classList.add('active');
   laserR.classList.add('active');
-  spawnLaserBurn(eyeX, eyeY + 2, dist, angle + 2);
-  spawnLaserBurn(eyeX, eyeY - 2, dist, angle - 2);
-  for(let i=0; i<3; i++){
-    await fightSleep(300);
-    const bx = targetX + (Math.random()-0.5)*60;
-    const by = targetY + (Math.random()-0.5)*40;
-    spawnImpact(bx, by, 'rgba(255,80,0,.9)', 60+Math.random()*40);
-    spawnHitEffect(bx-20, by-40, '🔥', '#ff4400');
+  for(let i=0;i<3;i++){
+    await fightSleep(280);
+    spawnImpact(tX+(Math.random()-0.5)*50, tY+(Math.random()-0.5)*30,'rgba(255,80,0,.95)',60);
+    spawnHit(tX-30, tY-50,'🔥','#ff4400');
+    const r=parseInt(fighterB.style.right)||Math.round(vw*0.12);
+    setPos(fighterB,'right',r-(i*20),0.15);
   }
-  await fightSleep(duration);
+  await fightSleep(800);
   laserEyes.classList.remove('active');
   laserL.classList.remove('active');
   laserR.classList.remove('active');
+  setPos(fighterB,'right',vw*0.12,0.5);
+  fighterH.classList.add('fighting');
+  await fightSleep(500);
+}
+async function comboAttack(vw){
+  await hAttack(vw);
+  await fightSleep(200);
+  await bAttack(vw);
+  await fightSleep(300);
+  await laserAttack(vw);
 }
 async function runFightScene(){
   fightActive = true;
   fightScene.classList.add('active');
-  await fightSleep(100); // ждём пока DOM отрисует fight-scene
+  await fightSleep(100);
   fightScene.style.pointerEvents = 'none';
   const vw = window.innerWidth;
-  const fw = fighterH.offsetWidth || 140;
-  fighterH.style.left = '-200px';
-  fighterB.style.right = '-200px';
-  fighterH.style.bottom = '0px';
-  fighterB.style.bottom = '0px';
-  fighterH.classList.add('visible','walking');
-  fighterB.classList.add('visible','walking');
-  await fightSleep(200);
-  fighterH.style.left = Math.round(vw * 0.2) + 'px';
-  fighterB.style.right = Math.round(vw * 0.2) + 'px';
-  await fightSleep(1200);
-  fighterH.style.left = Math.round(vw * 0.32) + 'px';
-  fighterB.style.right = Math.round(vw * 0.32) + 'px';
-  await fightSleep(1000);
-  fighterH.classList.remove('walking');
-  fighterB.classList.remove('walking');
-  await fightSleep(400);
-  const hRect = fighterH.getBoundingClientRect();
-  const impX = hRect.right + 20;
-  const impY = hRect.top + hRect.height * 0.45;
-  fighterH.classList.add('punch');
-  await fightSleep(200);
-  spawnImpact(impX, impY, 'rgba(255,220,50,.85)', 100);
-  spawnHitEffect(impX - 40, impY - 60, 'POW!', '#FFD700');
-  fighterB.classList.add('hit','shake');
-  await fightSleep(500);
-  fighterH.classList.remove('punch');
-  fighterB.classList.remove('hit','shake');
-  const curR = parseInt(fighterB.style.right) || Math.round(vw*0.32);
-  fighterB.style.right = (curR - 60) + 'px';
-  await fightSleep(600);
-  fighterB.style.right = (curR - 20) + 'px';
-  await fightSleep(500);
-  const bRect = fighterB.getBoundingClientRect();
-  const impX2 = bRect.left - 20;
-  const impY2 = bRect.top + bRect.height * 0.45;
-  fighterB.classList.add('punch');
-  await fightSleep(200);
-  spawnImpact(impX2, impY2, 'rgba(100,200,255,.85)', 90);
-  spawnHitEffect(impX2 - 60, impY2 - 60, 'CRACK!', '#88ccff');
-  fighterH.classList.add('hit','shake');
-  await fightSleep(500);
-  fighterB.classList.remove('punch');
-  fighterH.classList.remove('hit','shake');
-  await fightSleep(600);
-  spawnHitEffect(Math.round(vw*0.4), Math.round(window.innerHeight*0.3), '👁 LASER!', '#ff4400');
-  await fightSleep(300);
-  await shootLasers(1800);
-  fighterB.style.right = (curR - 80) + 'px';
-  await fightSleep(400);
-  fighterB.style.right = curR + 'px';
-  await fightSleep(400);
-  fighterH.classList.add('walking');
-  fighterB.classList.add('walking');
-  await fightSleep(300);
-  fighterH.classList.remove('walking');
-  fighterB.classList.remove('walking');
-  const title = document.createElement('div');
-  title.className = 'fight-title';
-  title.textContent = '💀 BODY 💀';
-  fightFx.appendChild(title);
+  fighterH.style.left = '-400px';
+  fighterB.style.right = '-400px';
+  fighterH.classList.add('visible');
+  fighterB.classList.add('visible');
   await fightSleep(100);
-  title.classList.add('show');
-  await fightSleep(2500);
-  title.style.transition='opacity .5s';
-  title.style.opacity='0';
-  await fightSleep(600);
-  title.remove();
-  fighterH.classList.add('walking');
-  fighterB.classList.add('walking');
-  fighterH.style.left = '-250px';
-  fighterB.style.right = '-250px';
-  await fightSleep(1000);
-  fighterH.classList.remove('visible','walking');
-  fighterB.classList.remove('visible','walking');
-  fightScene.classList.remove('active');
-  fightActive = false;
+  setPos(fighterH,'left',vw*0.12,1.0);
+  setPos(fighterB,'right',vw*0.12,1.0);
+  await fightSleep(1200);
+  fighterH.classList.add('fighting');
+  fighterB.classList.add('fighting');
+  const actions = [hAttack, bAttack, laserAttack, comboAttack];
+  const weights =  [3,       3,       2,            1]; // вероятности
+  const total = weights.reduce((a,b)=>a+b,0);
+  while(fightActive && isPlaying && currentTrackIndex === 1){
+    await fightSleep(400 + Math.random()*500);
+    if(!fightActive) break;
+    let roll = Math.random()*total, chosen=0;
+    for(let i=0;i<weights.length;i++){ roll-=weights[i]; if(roll<=0){chosen=i;break;} }
+    await actions[chosen](vw);
+  }
 }
 function stopFight(){
   fightActive = false;
   fightScene.classList.remove('active');
-  fighterH.classList.remove('visible','walking','punch','hit','shake');
-  fighterB.classList.remove('visible','walking','punch','hit','shake');
+  fighterH.classList.remove('visible','fighting','walking','punch','hit','shake');
+  fighterB.classList.remove('visible','fighting','walking','punch','hit','shake');
   laserEyes.classList.remove('active');
   laserL.classList.remove('active');
   laserR.classList.remove('active');
   fightFx.innerHTML = '';
-  fighterH.style.opacity = '0';
-  fighterH.style.visibility = 'hidden';
-  fighterH.style.left = '-400px';
-  fighterB.style.opacity = '0';
-  fighterB.style.visibility = 'hidden';
-  fighterB.style.right = '-400px';
+  fighterH.style.opacity='0';
+  fighterH.style.left='-400px';
+  fighterB.style.opacity='0';
+  fighterB.style.right='-400px';
   if(fightTimer){ clearTimeout(fightTimer); fightTimer=null; }
+}
 }
 const vampireEl = document.getElementById('vampire');
 let vampireActive = false;
