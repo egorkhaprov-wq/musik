@@ -118,6 +118,7 @@ const BEAT_THRESHOLD = 1.05; // совсем низкий порог - лови�
 const MIN_BEAT_GAP_MS = 150; // чаще биты разрешены
 const FALLBACK_BPM = 140;
 const cracksContainer = document.getElementById('cracksContainer');
+const contentWrapper = document.getElementById('contentWrapper');
 function createFuturisticBlock() {
   const types = ['hexagon', 'cube', 'diamond', 'orb', 'glitch', 'ring'];
   const type = types[Math.floor(Math.random() * types.length)];
@@ -429,14 +430,18 @@ function stopFallbackTimer() {
 }
 function triggerBeat(intensity = 0.7) {
   document.body.style.setProperty('--beat-intensity', intensity);
-  document.body.classList.add('beat-active');
+  contentWrapper.classList.add('beat-active');
+  document.body.classList.add('beat-pulse');
   spawnBlock();
   if (intensity > 0.7 && Math.random() > 0.5) spawnBlock();
   spawnCrack(intensity);
   if (intensity > 0.8 && Math.random() > 0.6) {
     setTimeout(() => spawnCrack(intensity * 0.7), 60);
   }
-  setTimeout(() => document.body.classList.remove('beat-active'), 220);
+  setTimeout(() => {
+    contentWrapper.classList.remove('beat-active');
+    document.body.classList.remove('beat-pulse');
+  }, 220);
 }
 function spawnBlock() {
   if (!isPlaying) return;
@@ -484,7 +489,8 @@ function pauseMusic() {
   if (beatCheckRAF) cancelAnimationFrame(beatCheckRAF);
   stopFallbackTimer();
   stopVampire();
-  document.body.classList.remove('beat-active');
+  contentWrapper.classList.remove('beat-active');
+  document.body.classList.remove('beat-pulse');
   setTimeout(() => {
     while (fallingBlocks.firstChild) fallingBlocks.removeChild(fallingBlocks.firstChild);
     while (cracksContainer.firstChild) cracksContainer.removeChild(cracksContainer.firstChild);
