@@ -774,7 +774,6 @@ function stopFight(){
   fighterB.style.right='-400px';
   if(fightTimer){ clearTimeout(fightTimer); fightTimer=null; }
 }
-}
 const vampireEl = document.getElementById('vampire');
 let vampireActive = false;
 let vampireBehaviorRunning = false;
